@@ -1,0 +1,424 @@
+{% extends "base.html" %}
+
+{% block title %}Customers Management - Admin{% endblock %}
+{% block page_title %}Customers Management{% endblock %}
+
+{% block content %}
+<div class="customers-management">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body py-3">
+                    <div class="row text-center">
+                        <div class="col">
+                            <div class="d-flex flex-column">
+                                <span class="h4 mb-1">{{ total_count }}</span>
+                                <span class="text-muted small text-uppercase">Total Customers</span>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="d-flex flex-column">
+                                <span class="h4 mb-1">
+                                    {{ customers|selectattr('is_active', 'equalto', true)|list|length }}
+                                </span>
+                                <span class="text-muted small text-uppercase">Active</span>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="d-flex flex-column">
+                                <span class="h4 mb-1">
+                                    {{ customers|selectattr('last_login', 'defined')|list|length }}
+                                </span>
+                                <span class="text-muted small text-uppercase">Recently Active</span>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="d-flex flex-column">
+                                <span class="h4 mb-1">
+                                    {{ customers|selectattr('total_orders', 'gt', 0)|list|length }}
+                                </span>
+                                <span class="text-muted small text-uppercase">Have Orders</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center py-4">
+                    <h3>
+                        ₹{{ "%.0f"|format((customers|sum(attribute='total_spent'))|default(0)) }}
+                    </h3>
+                    <p class="mb-0">Total Customer Spending</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Search and Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('customers') }}">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Search Customers</label>
+                        <div class="input-group">
+                            <input type="text" 
+                                   class="form-control" 
+                                   name="search" 
+                                   value="{{ search }}"
+                                   placeholder="Name, Phone, Email...">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            {% if search %}
+                            <a href="{{ url_for('customers') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" name="status">
+                            <option value="">All Status</option>
+                            <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>
+                                Active Only
+                            </option>
+                            <option value="inactive" {% if request.args.get('status') == 'inactive' %}selected{% endif %}>
+                                Inactive Only
+                            </option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label">Sort By</label>
+                        <select class="form-select" name="sort">
+                            <option value="newest" {% if request.args.get('sort') == 'newest' %}selected{% endif %}>
+                                Newest First
+                            </option>
+                            <option value="oldest" {% if request.args.get('sort') == 'oldest' %}selected{% endif %}>
+                                Oldest First
+                            </option>
+                            <option value="orders" {% if request.args.get('sort') == 'orders' %}selected{% endif %}>
+                                Most Orders
+                            </option>
+                            <option value="spent" {% if request.args.get('sort') == 'spent' %}selected{% endif %}>
+                                Most Spent
+                            </option>
+                        </select>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Customers Table -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">
+                <i class="fas fa-users me-2"></i>
+                Customers ({{ total_count }})
+            </h6>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-primary" onclick="exportCustomers()">
+                    <i class="fas fa-download"></i> Export
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="printCustomers()">
+                    <i class="fas fa-print"></i> Print
+                </button>
+            </div>
+        </div>
+        
+        <div class="card-body p-0">
+            {% if customers %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>Contact</th>
+                            <th>Status</th>
+                            <th>Orders</th>
+                            <th>Total Spent</th>
+                            <th>Joined</th>
+                            <th>Last Active</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for customer in customers %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <img src="{{ customer.profile_pic or 'https://res.cloudinary.com/demo/image/upload/v1633427556/default-avatar.png' }}" 
+                                         alt="{{ customer.full_name }}" 
+                                         class="customer-avatar rounded-circle me-3">
+                                    <div>
+                                        <div class="fw-medium">{{ customer.full_name }}</div>
+                                        <small class="text-muted">ID: {{ customer.id }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="small">
+                                    <div><i class="fas fa-phone me-1"></i> {{ customer.phone }}</div>
+                                    <div><i class="fas fa-envelope me-1"></i> {{ customer.email|truncate(20) }}</div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if customer.is_active %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    Active
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-times-circle me-1"></i>
+                                    Inactive
+                                </span>
+                                {% endif %}
+                                <br>
+                                <small class="text-muted">{{ customer.location|truncate(15) }}</small>
+                            </td>
+                            <td>
+                                <div class="text-center">
+                                    <span class="h6 mb-0">{{ customer.total_orders or 0 }}</span>
+                                    <div class="small text-muted">orders</div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="fw-bold">{{ customer.total_spent_formatted }}</div>
+                                <small class="text-muted">
+                                    {% if customer.total_orders and customer.total_orders > 0 %}
+                                    Avg: ₹{{ "%.0f"|format(customer.total_spent/customer.total_orders) }}
+                                    {% else %}No orders{% endif %}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="small">{{ customer.created_at_formatted.split(',')[0] }}</div>
+                                <small class="text-muted">{{ customer.created_at_formatted.split(',')[1]|trim }}</small>
+                            </td>
+                            <td>
+                                {% if customer.last_login %}
+                                <div class="small">{{ customer.last_login_formatted.split(',')[0] }}</div>
+                                <small class="text-muted">{{ customer.last_login_formatted.split(',')[1]|trim }}</small>
+                                {% else %}
+                                <span class="text-muted small">Never</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary view-customer-btn" 
+                                            data-customer-id="{{ customer.id }}"
+                                            title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-info" 
+                                            onclick="viewCustomerOrders({{ customer.id }})"
+                                            title="View Orders">
+                                        <i class="fas fa-shopping-cart"></i>
+                                    </button>
+                                    <button class="btn btn-outline-warning" 
+                                            onclick="editCustomer({{ customer.id }})"
+                                            title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                <h5>No customers found</h5>
+                <p class="text-muted">
+                    {% if search %}
+                    Try changing your search criteria
+                    {% else %}
+                    No customers registered yet
+                    {% endif %}
+                </p>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if customers and total_pages > 1 %}
+        <div class="card-footer">
+            <nav aria-label="Customers pagination">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page > 1 %}
+                    <li class="page-item">
+                        <a class="page-link" 
+                           href="{{ url_for('customers', page=page-1, search=search) }}">
+                            Previous
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for p in range(1, total_pages + 1) %}
+                        {% if p >= page-2 and p <= page+2 %}
+                        <li class="page-item {% if p == page %}active{% endif %}">
+                            <a class="page-link" 
+                               href="{{ url_for('customers', page=p, search=search) }}">
+                                {{ p }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page < total_pages %}
+                    <li class="page-item">
+                        <a class="page-link" 
+                           href="{{ url_for('customers', page=page+1, search=search) }}">
+                            Next
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Customer Stats -->
+    <div class="row mt-4">
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <div class="text-primary">
+                        <i class="fas fa-user-plus fa-2x"></i>
+                    </div>
+                    <h4 class="mt-2">
+                        {{ customers|selectattr('created_at', 'defined')|list|length }}
+                    </h4>
+                    <p class="text-muted mb-0">Total Registered</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <div class="text-success">
+                        <i class="fas fa-shopping-cart fa-2x"></i>
+                    </div>
+                    <h4 class="mt-2">
+                        {{ customers|selectattr('total_orders', 'gt', 0)|list|length }}
+                    </h4>
+                    <p class="text-muted mb-0">Have Orders</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <div class="text-info">
+                        <i class="fas fa-rupee-sign fa-2x"></i>
+                    </div>
+                    <h4 class="mt-2">
+                        ₹{{ "%.0f"|format((customers|max(attribute='total_spent')|default(0))|float) }}
+                    </h4>
+                    <p class="text-muted mb-0">Top Spender</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <div class="text-warning">
+                        <i class="fas fa-star fa-2x"></i>
+                    </div>
+                    <h4 class="mt-2">
+                        {{ customers|selectattr('total_orders', 'gt', 5)|list|length }}
+                    </h4>
+                    <p class="text-muted mb-0">Regular Customers</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Data -->
+<script>
+    function exportCustomers() {
+        const params = new URLSearchParams(window.location.search);
+        params.set('export', 'csv');
+        
+        const url = `{{ url_for('customers') }}?${params.toString()}`;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `customers_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        showToast('Export started. Check your downloads.', 'success');
+    }
+    
+    function printCustomers() {
+        window.print();
+    }
+    
+    function viewCustomerOrders(customerId) {
+        window.location.href = `/orders?search=${customerId}&search_type=customer`;
+    }
+    
+    function editCustomer(customerId) {
+        // Implement edit functionality
+        showToast('Edit feature coming soon', 'info');
+    }
+    
+    function showToast(message, type = 'info') {
+        // Create toast container if not exists
+        let toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toastContainer';
+            toastContainer.className = 'position-fixed bottom-0 end-0 p-3';
+            toastContainer.style.zIndex = '1050';
+            document.body.appendChild(toastContainer);
+        }
+        
+        // Create toast
+        const toastId = 'toast-' + Date.now();
+        const toast = document.createElement('div');
+        toast.id = toastId;
+        toast.className = `toast align-items-center text-bg-${type} border-0`;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        // Show toast
+        const bsToast = new bootstrap.Toast(toast, {
+            autohide: true,
+            delay: 3000
+        });
+        bsToast.show();
+        
+        // Remove after hide
+        toast.addEventListener('hidden.bs.toast', function () {
+            toast.remove();
+        });
+    }
+</script>
+{% endblock %}
