@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Admin{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div id="dashboardContent">
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card success h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="stat-number">{{ stats.total_orders|default(0) }}</div>
+                            <div class="stat-label">Total Orders</div>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="stat-number">₹{{ "%.0f"|format(stats.total_revenue|default(0)) }}</div>
+                            <div class="stat-label">Total Revenue</div>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-rupee-sign"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card info h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="stat-number">{{ stats.total_customers|default(0) }}</div>
+                            <div class="stat-label">Total Customers</div>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card warning h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="stat-number">₹{{ "%.0f"|format(stats.avg_order_value|default(0)) }}</div>
+                            <div class="stat-label">Avg Order Value</div>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filters and Actions -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('dashboard', filter='today') }}" 
+                   class="btn btn-outline-primary {% if filter_type == 'today' %}active{% endif %}">
+                    Today
+                </a>
+                <a href="{{ url_for('dashboard', filter='week') }}" 
+                   class="btn btn-outline-primary {% if filter_type == 'week' %}active{% endif %}">
+                    This Week
+                </a>
+                <a href="{{ url_for('dashboard', filter='month') }}" 
+                   class="btn btn-outline-primary {% if filter_type == 'month' %}active{% endif %}">
+                    This Month
+                </a>
+                <a href="{{ url_for('dashboard', filter='all') }}" 
+                   class="btn btn-outline-primary {% if filter_type == 'all' %}active{% endif %}">
+                    All Time
+                </a>
+            </div>
+        </div>
+        <div class="col-md-4 text-end">
+            <button id="refreshDashboard" class="btn btn-outline-secondary">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newOrderModal">
+                <i class="fas fa-plus"></i> New Order
+            </button>
+        </div>
+    </div>
+    
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>
+                        Revenue Trend
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Order Status Distribution
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Today's Orders -->
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Today's Orders ({{ current_date }})
+                    </h6>
+                    <span class="badge bg-primary">{{ todays_orders|length }}</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if todays_orders %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Time</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in todays_orders %}
+                                <tr>
+                                    <td>#{{ order.order_id }}</td>
+                                    <td>
+                                        <div>{{ order.user_name }}</div>
+                                        <small class="text-muted">{{ order.user_phone }}</small>
+                                    </td>
+                                    <td>₹{{ "%.2f"|format(order.total_amount) }}</td>
+                                    <td>
+                                        <span class="status-badge {{ order.status }}">
+                                            {{ order.status }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small>{{ order.order_date_formatted.split(',')[-1]|trim }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary view-order-btn" 
+                                                    data-order-id="{{ order.order_id }}">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-info view-payment-btn" 
+                                                    data-order-id="{{ order.order_id }}">
+                                                <i class="fas fa-credit-card"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                        <h5>No orders today</h5>
+                        <p class="text-muted">No orders have been placed today.</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if todays_orders %}
+                <div class="card-footer text-end">
+                    <a href="{{ url_for('orders') }}" class="btn btn-sm btn-outline-primary">
+                        View All Orders <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Recent Activities & Top Items -->
+        <div class="col-lg-4">
+            <div class="row">
+                <div class="col-12 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-fire me-2"></i>
+                                Top Ordered Items
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="topItemsChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-12">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-bell me-2"></i>
+                                Recent Activities
+                            </h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="list-group list-group-flush">
+                                {% for activity in recent_activities %}
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1">Order #{{ activity.order_id }}</h6>
+                                            <p class="mb-1 text-muted small">{{ activity.user_name }}</p>
+                                        </div>
+                                        <span class="badge {{ activity.status_badge }}">
+                                            {{ activity.status }}
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">
+                                        <i class="far fa-clock me-1"></i>
+                                        {{ format_ist_time(activity.order_date, '%I:%M %p') }}
+                                    </small>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Stats -->
+    <div class="row mt-4">
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-primary mb-2">
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                    <h4>{{ stats.pending_orders|default(0) }}</h4>
+                    <p class="text-muted mb-0">Pending Orders</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-success mb-2">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                    <h4>{{ stats.completed_orders|default(0) }}</h4>
+                    <p class="text-muted mb-0">Completed</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-danger mb-2">
+                        <i class="fas fa-times-circle fa-2x"></i>
+                    </div>
+                    <h4>{{ stats.cancelled_orders|default(0) }}</h4>
+                    <p class="text-muted mb-0">Cancelled</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-info mb-2">
+                        <i class="fas fa-truck fa-2x"></i>
+                    </div>
+                    <h4>{{ (stats.completed_orders|default(0)) - (stats.cancelled_orders|default(0)) }}</h4>
+                    <p class="text-muted mb-0">Delivered</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Order Modal -->
+<div class="modal fade" id="newOrderModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">This feature is under development.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Data for Charts -->
+<div id="chartData" 
+     data-daily-orders='{{ daily_data|tojson|safe }}'
+     data-status-distribution='{{ status_distribution|tojson|safe }}'
+     data-top-items='{{ top_items|tojson|safe }}'
+     style="display: none;">
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Pass data to JavaScript
+    const chartData = {
+        dailyOrders: JSON.parse(document.getElementById('chartData').getAttribute('data-daily-orders')),
+        statusDistribution: JSON.parse(document.getElementById('chartData').getAttribute('data-status-distribution')),
+        topItems: JSON.parse(document.getElementById('chartData').getAttribute('data-top-items'))
+    };
+</script>
+{% endblock %}

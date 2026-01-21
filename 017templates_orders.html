@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block title %}Orders Management - Admin{% endblock %}
+{% block page_title %}Orders Management{% endblock %}
+
+{% block content %}
+<div class="orders-management">
+    <!-- Header with Stats -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body py-3">
+                    <div class="row text-center">
+                        {% for status in status_counts %}
+                        <div class="col">
+                            <div class="d-flex flex-column">
+                                <span class="h4 mb-1">{{ status.count }}</span>
+                                <span class="text-muted small text-uppercase">{{ status.status }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        <div class="col">
+                            <div class="d-flex flex-column">
+                                <span class="h4 mb-1">{{ total_count }}</span>
+                                <span class="text-muted small text-uppercase">Total</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center py-4">
+                    <h3>₹{{ "%.0f"|format((orders|sum(attribute='total_amount'))|default(0)) }}</h3>
+                    <p class="mb-0">Total Revenue</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filters and Search -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form id="orderFilterForm" method="GET" action="{{ url_for('orders') }}">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Search</label>
+                        <div class="input-group">
+                            <input type="text" 
+                                   class="form-control" 
+                                   name="search" 
+                                   value="{{ search }}"
+                                   placeholder="Order ID, Name, Phone, Email...">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" name="status">
+                            <option value="">All Status</option>
+                            {% for status_count in status_counts %}
+                            <option value="{{ status_count.status }}" 
+                                    {% if status == status_count.status %}selected{% endif %}>
+                                {{ status_count.status|title }} ({{ status_count.count }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-5">
+                        <label class="form-label">Date Range</label>
+                        <div class="row g-2">
+                            <div class="col">
+                                <input type="date" 
+                                       class="form-control" 
+                                       name="start_date" 
+                                       value="{{ start_date }}">
+                            </div>
+                            <div class="col">
+                                <input type="date" 
+                                       class="form-control" 
+                                       name="end_date" 
+                                       value="{{ end_date }}">
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-filter"></i> Filter
+                                </button>
+                                <a href="{{ url_for('orders') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Bulk Actions -->
+    <div id="bulkActions" class="card mb-3 d-none">
+        <div class="card-body py-2">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="me-3">
+                        <i class="fas fa-check-square text-primary me-1"></i>
+                        <span id="selectedCount">0</span> selected
+                    </span>
+                </div>
+                <div class="d-flex gap-2">
+                    <select id="bulkActionSelect" class="form-select form-select-sm w-auto">
+                        <option value="">Bulk Actions</option>
+                        <option value="processing">Mark as Processing</option>
+                        <option value="completed">Mark as Completed</option>
+                        <option value="cancelled">Mark as Cancelled</option>
+                        <option value="export">Export Selected</option>
+                        <option value="delete" class="text-danger">Delete Selected</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">
+                        Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Orders Table -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">
+                <i class="fas fa-list me-2"></i>
+                Orders ({{ total_count }})
+            </h6>
+            <div class="d-flex gap-2">
+                <button id="exportOrdersBtn" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-download"></i> Export
+                </button>
+                <button id="printOrdersBtn" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-print"></i> Print
+                </button>
+            </div>
+        </div>
+        
+        <div class="card-body p-0">
+            {% if orders %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th width="50">
+                                <input type="checkbox" 
+                                       id="selectAllCheckbox" 
+                                       class="form-check-input">
+                            </th>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Payment</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr data-order-id="{{ order.order_id }}">
+                            <td>
+                                <input type="checkbox" 
+                                       value="{{ order.order_id }}" 
+                                       class="form-check-input order-checkbox">
+                            </td>
+                            <td>
+                                <strong>#{{ order.order_id }}</strong>
+                                <br>
+                                <small class="text-muted">{{ order.item_count }} items</small>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div>
+                                        <div class="fw-medium">{{ order.user_name }}</div>
+                                        <small class="text-muted">{{ order.user_phone }}</small>
+                                        <br>
+                                        <small class="text-muted">{{ order.user_email|truncate(20) }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="fw-bold">{{ order.total_amount_formatted }}</div>
+                                <small class="text-muted">{{ order.payment_mode|default('COD') }}</small>
+                            </td>
+                            <td>
+                                <span class="status-badge {{ order.status }}">
+                                    {{ order.status|title }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if order.payment_status %}
+                                <span class="badge bg-{{ 'success' if order.payment_status == 'completed' else 'warning' }}">
+                                    {{ order.payment_status|title }}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div>{{ order.order_date_formatted.split(',')[0] }}</div>
+                                <small class="text-muted">{{ order.order_date_formatted.split(',')[1]|trim }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary view-order-btn" 
+                                            data-order-id="{{ order.order_id }}"
+                                            title="View Order Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-info view-payment-btn" 
+                                            data-order-id="{{ order.order_id }}"
+                                            title="Payment Details">
+                                        <i class="fas fa-credit-card"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary view-customer-btn" 
+                                            data-customer-id="{{ order.user_id }}"
+                                            title="Customer Details">
+                                        <i class="fas fa-user"></i>
+                                    </button>
+                                    <button class="btn btn-outline-warning update-status-btn" 
+                                            data-order-id="{{ order.order_id }}"
+                                            title="Update Status">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                <h5>No orders found</h5>
+                <p class="text-muted">
+                    {% if search or status or start_date or end_date %}
+                    Try changing your filters
+                    {% else %}
+                    No orders have been placed yet
+                    {% endif %}
+                </p>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if orders and total_pages > 1 %}
+        <div class="card-footer">
+            <nav aria-label="Orders pagination">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page > 1 %}
+                    <li class="page-item">
+                        <a class="page-link" 
+                           href="{{ url_for('orders', page=page-1, search=search, status=status, start_date=start_date, end_date=end_date) }}">
+                            Previous
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for p in range(1, total_pages + 1) %}
+                        {% if p >= page-2 and p <= page+2 %}
+                        <li class="page-item {% if p == page %}active{% endif %}">
+                            <a class="page-link" 
+                               href="{{ url_for('orders', page=p, search=search, status=status, start_date=start_date, end_date=end_date) }}">
+                                {{ p }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page < total_pages %}
+                    <li class="page-item">
+                        <a class="page-link" 
+                           href="{{ url_for('orders', page=page+1, search=search, status=status, start_date=start_date, end_date=end_date) }}">
+                            Next
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Quick Stats Footer -->
+    <div class="row mt-4">
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <div class="text-primary">
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                    <h4 class="mt-2">{{ status_counts|selectattr('status', 'equalto', 'pending')|map(attribute='count')|first|default(0) }}</h4>
+                    <p class="text-muted mb-0">Pending Orders</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <div class="text-info">
+                        <i class="fas fa-cogs fa-2x"></i>
+                    </div>
+                    <h4 class="mt-2">{{ status_counts|selectattr('status', 'equalto', 'processing')|map(attribute='count')|first|default(0) }}</h4>
+                    <p class="text-muted mb-0">Processing</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <div class="text-success">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                    <h4 class="mt-2">{{ status_counts|selectattr('status', 'equalto', 'completed')|map(attribute='count')|first|default(0) }}</h4>
+                    <p class="text-muted mb-0">Completed</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <div class="text-danger">
+                        <i class="fas fa-times-circle fa-2x"></i>
+                    </div>
+                    <h4 class="mt-2">{{ status_counts|selectattr('status', 'equalto', 'cancelled')|map(attribute='count')|first|default(0) }}</h4>
+                    <p class="text-muted mb-0">Cancelled</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Select all checkbox
+    document.getElementById('selectAllCheckbox')?.addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.order-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        updateBulkActionState();
+    });
+    
+    function clearSelection() {
+        document.querySelectorAll('.order-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        document.getElementById('selectAllCheckbox').checked = false;
+        updateBulkActionState();
+    }
+    
+    // Initialize filters
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-submit status filter
+        document.querySelector('select[name="status"]')?.addEventListener('change', function() {
+            this.form.submit();
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,105 @@
+<!-- admin_orders_management/templates/partials/sidebar.html -->
+<div class="sidebar">
+    <div class="sidebar-header">
+        <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+                <i class="fas fa-utensils fa-2x text-white"></i>
+            </div>
+            <div class="flex-grow-1 ms-3">
+                <h5 class="mb-0 text-white">Bite Me Buddy</h5>
+                <small class="text-white-50">Admin Panel</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="sidebar-menu">
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" 
+                   href="{{ url_for('dashboard') }}">
+                    <i class="fas fa-tachometer-alt me-2"></i>
+                    Dashboard
+                </a>
+            </li>
+            
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'orders' %}active{% endif %}" 
+                   href="{{ url_for('orders') }}">
+                    <i class="fas fa-shopping-cart me-2"></i>
+                    Orders
+                    {% if pending_orders > 0 %}
+                    <span class="badge bg-danger float-end">{{ pending_orders }}</span>
+                    {% endif %}
+                </a>
+            </li>
+            
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'customers' %}active{% endif %}" 
+                   href="{{ url_for('customers') }}">
+                    <i class="fas fa-users me-2"></i>
+                    Customers
+                </a>
+            </li>
+            
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'items' %}active{% endif %}" 
+                   href="{{ url_for('items') }}">
+                    <i class="fas fa-list me-2"></i>
+                    Items
+                </a>
+            </li>
+            
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'statistics' %}active{% endif %}" 
+                   href="{{ url_for('statistics') }}">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    Statistics
+                </a>
+            </li>
+            
+            <li class="nav-item mt-4">
+                <hr class="border-white opacity-25">
+            </li>
+            
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-cog me-2"></i>
+                    Settings
+                </a>
+            </li>
+            
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-question-circle me-2"></i>
+                    Help & Support
+                </a>
+            </li>
+            
+            <li class="nav-item">
+                <a class="nav-link text-danger" href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    Logout
+                </a>
+            </li>
+        </ul>
+    </div>
+    
+    <div class="sidebar-footer">
+        <div class="text-center text-white-50 small">
+            <p class="mb-1">
+                <i class="fas fa-clock"></i>
+                {{ now.strftime('%I:%M %p') }}
+            </p>
+            <p class="mb-0">
+                <i class="fas fa-calendar"></i>
+                {{ now.strftime('%d %b %Y') }}
+            </p>
+            <div class="mt-2">
+                <span class="badge bg-success">
+                    <i class="fas fa-database"></i>
+                    Online
+                </span>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}Statistics & Analytics - Admin{% endblock %}
+{% block page_title %}Statistics & Analytics{% endblock %}
+
+{% block content %}
+<div class="statistics-page">
+    <!-- Period Selector -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <label class="form-label">Select Period</label>
+                    <select id="periodSelect" class="form-select">
+                        <option value="today" {% if period == 'today' %}selected{% endif %}>Today</option>
+                        <option value="week" {% if period == 'week' %}selected{% endif %}>This Week</option>
+                        <option value="month" {% if period == 'month' %}selected{% endif %}>This Month</option>
+                        <option value="quarter" {% if period == 'quarter' %}selected{% endif %}>This Quarter</option>
+                        <option value="year" {% if period == 'year' %}selected{% endif %}>This Year</option>
+                        <option value="custom" {% if period == 'custom' %}selected{% endif %}>Custom Range</option>
+                    </select>
+                </div>
+                
+                <div id="customDateRange" class="col-md-6 {% if period != 'custom' %}d-none{% endif %}">
+                    <div class="row g-2">
+                        <div class="col">
+                            <label class="form-label">From Date</label>
+                            <input type="date" 
+                                   id="startDate" 
+                                   class="form-control" 
+                                   value="{{ start_date }}">
+                        </div>
+                        <div class="col">
+                            <label class="form-label">To Date</label>
+                            <input type="date" 
+                                   id="endDate" 
+                                   class="form-control" 
+                                   value="{{ end_date }}">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-2 text-end">
+                    <button id="applyPeriodBtn" class="btn btn-primary mt-md-4">
+                        <i class="fas fa-filter"></i> Apply
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Stats Overview -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card success h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="stat-number">{{ stats.total_orders|default(0) }}</div>
+                            <div class="stat-label">Total Orders</div>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            {{ stats.completed_orders|default(0) }} completed
+                            ({{ stats.completion_rate|default(0) }}%)
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card stat-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="stat-number">₹{{ "%.0f"|format(stats.total_revenue|default(0)) }}</div>
+                            <div class="stat-label">Total Revenue</div>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-rupee-sign"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            Avg: ₹{{ "%.0f"|format(stats.avg_order_value|default(0)) }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card stat-card info h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="stat-number">{{ stats.total_customers|default(0) }}</div>
+                            <div class="stat-label">Total Customers</div>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            {{ stats.today_orders|default(0) }} orders today
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card stat-card warning h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="stat-number">{{ stats.pending_orders|default(0) }}</div>
+                            <div class="stat-label">Pending Orders</div>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            {{ stats.cancelled_orders|default(0) }} cancelled
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts -->
+    <div class="row mb-4">
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>
+                        Revenue Trend
+                    </h6>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                                type="button" data-bs-toggle="dropdown">
+                            Last 30 days
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#">Last 7 days</a></li>
+                            <li><a class="dropdown-item" href="#">Last 30 days</a></li>
+                            <li><a class="dropdown-item" href="#">Last 90 days</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="revenueTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Payment Methods
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="paymentMethodsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Orders Over Time
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="ordersOverTimeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-area me-2"></i>
+                        Category Distribution
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="categoryDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Additional Charts -->
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-clock me-2"></i>
+                        Hourly Order Distribution
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="hourlyDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-user-plus me-2"></i>
+                        Customer Acquisition
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="customerAcquisitionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Detailed Stats -->
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">
+                <i class="fas fa-table me-2"></i>
+                Detailed Statistics
+            </h6>
+            <div class="btn-group">
+                <button id="exportStatsBtn" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-download"></i> Export
+                </button>
+                <button id="printStatsBtn" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-print"></i> Print
+                </button>
+                <button id="refreshStatsBtn" class="btn btn-sm btn-outline-success">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="border-bottom pb-2">Order Status Summary</h6>
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <td>Pending Orders</td>
+                                <td class="text-end">{{ stats.pending_orders|default(0) }}</td>
+                                <td class="text-end">
+                                    {% if stats.total_orders > 0 %}
+                                    {{ "%.1f"|format((stats.pending_orders|default(0)/stats.total_orders)*100) }}%
+                                    {% else %}0%{% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Processing Orders</td>
+                                <td class="text-end">
+                                    {{ stats.total_orders|default(0) - stats.pending_orders|default(0) - stats.completed_orders|default(0) - stats.cancelled_orders|default(0) }}
+                                </td>
+                                <td class="text-end">
+                                    {% if stats.total_orders > 0 %}
+                                    {{ "%.1f"|format(((stats.total_orders|default(0) - stats.pending_orders|default(0) - stats.completed_orders|default(0) - stats.cancelled_orders|default(0))/stats.total_orders)*100) }}%
+                                    {% else %}0%{% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Completed Orders</td>
+                                <td class="text-end">{{ stats.completed_orders|default(0) }}</td>
+                                <td class="text-end">
+                                    {% if stats.total_orders > 0 %}
+                                    {{ "%.1f"|format((stats.completed_orders|default(0)/stats.total_orders)*100) }}%
+                                    {% else %}0%{% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Cancelled Orders</td>
+                                <td class="text-end">{{ stats.cancelled_orders|default(0) }}</td>
+                                <td class="text-end">
+                                    {% if stats.total_orders > 0 %}
+                                    {{ "%.1f"|format((stats.cancelled_orders|default(0)/stats.total_orders)*100) }}%
+                                    {% else %}0%{% endif %}
+                                </td>
+                            </tr>
+                            <tr class="table-active">
+                                <td><strong>Total Orders</strong></td>
+                                <td class="text-end"><strong>{{ stats.total_orders|default(0) }}</strong></td>
+                                <td class="text-end"><strong>100%</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="col-md-6">
+                    <h6 class="border-bottom pb-2">Revenue Summary</h6>
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <td>Total Revenue</td>
+                                <td class="text-end">₹{{ "%.2f"|format(stats.total_revenue|default(0)) }}</td>
+                            </tr>
+                            <tr>
+                                <td>Today's Revenue</td>
+                                <td class="text-end">₹{{ "%.2f"|format(stats.today_revenue|default(0)) }}</td>
+                            </tr>
+                            <tr>
+                                <td>Average Order Value</td>
+                                <td class="text-end">₹{{ "%.2f"|format(stats.avg_order_value|default(0)) }}</td>
+                            </tr>
+                            <tr>
+                                <td>Total Customers</td>
+                                <td class="text-end">{{ stats.total_customers|default(0) }}</td>
+                            </tr>
+                            <tr>
+                                <td>Customer Lifetime Value</td>
+                                <td class="text-end">
+                                    {% if stats.total_customers > 0 %}
+                                    ₹{{ "%.2f"|format(stats.total_revenue|default(0)/stats.total_customers) }}
+                                    {% else %}₹0.00{% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Daily Data Table -->
+            {% if daily_data %}
+            <div class="mt-4">
+                <h6 class="border-bottom pb-2">Daily Breakdown</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th class="text-end">Orders</th>
+                                <th class="text-end">Revenue</th>
+                                <th class="text-end">Avg Order</th>
+                                <th class="text-end">Customers</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for day in daily_data %}
+                            <tr>
+                                <td>{{ day.date.strftime('%d %b %Y') }}</td>
+                                <td class="text-end">{{ day.order_count }}</td>
+                                <td class="text-end">₹{{ "%.2f"|format(day.total_revenue|default(0)) }}</td>
+                                <td class="text-end">
+                                    {% if day.order_count > 0 %}
+                                    ₹{{ "%.2f"|format(day.total_revenue/day.order_count) }}
+                                    {% else %}₹0.00{% endif %}
+                                </td>
+                                <td class="text-end">-</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Data for Charts -->
+<div id="chartData" style="display: none;"
+     data-payment-methods='{{ payment_methods|tojson|safe }}'
+     data-categories='{{ categories|tojson|safe }}'>
+</div>
+
+<script>
+    // Apply period button
+    document.getElementById('applyPeriodBtn')?.addEventListener('click', function() {
+        const period = document.getElementById('periodSelect').value;
+        let url = '/statistics?period=' + period;
+        
+        if (period === 'custom') {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            if (startDate && endDate) {
+                url += '&start_date=' + startDate + '&end_date=' + endDate;
+            }
+        }
+        
+        window.location.href = url;
+    });
+    
+    // Initialize date pickers
+    document.addEventListener('DOMContentLoaded', function() {
+        const startDate = document.getElementById('startDate');
+        const endDate = document.getElementById('endDate');
+        
+        if (startDate && endDate) {
+            startDate.max = new Date().toISOString().split('T')[0];
+            endDate.max = new Date().toISOString().split('T')[0];
+            
+            startDate.addEventListener('change', function() {
+                endDate.min = this.value;
+            });
+            
+            endDate.addEventListener('change', function() {
+                startDate.max = this.value;
+            });
+        }
+    });
+</script>
+{% endblock %}

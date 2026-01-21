@@ -1,0 +1,229 @@
+<!-- admin_orders_management/templates/modals/customer_details_modal.html -->
+<div class="modal fade" id="customerDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user me-2"></i>
+                    Customer Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center py-5">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-3">Loading customer details...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Close
+                </button>
+                <button type="button" class="btn btn-primary" onclick="printCustomerDetails()">
+                    <i class="fas fa-print"></i> Print
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Details Template -->
+<template id="customerDetailsTemplate">
+    <div class="customer-details">
+        <!-- Customer Header -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="d-flex align-items-center">
+                    <img src="{profile_pic}" 
+                         alt="{full_name}" 
+                         class="customer-avatar-lg rounded-circle me-3">
+                    <div>
+                        <h4 class="mb-1">{full_name}</h4>
+                        <p class="text-muted mb-0">
+                            Customer ID: {id} | 
+                            Joined: {created_at_formatted}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <span class="badge {active_badge}">
+                    {active_status}
+                </span>
+            </div>
+        </div>
+        
+        <!-- Contact Information -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-address-card me-2"></i>
+                    Contact Information
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless table-sm">
+                            <tr>
+                                <th width="40%">Phone:</th>
+                                <td>{phone}</td>
+                            </tr>
+                            <tr>
+                                <th>Email:</th>
+                                <td>{email}</td>
+                            </tr>
+                            <tr>
+                                <th>Status:</th>
+                                <td>
+                                    <span class="badge {active_badge}">
+                                        {active_status}
+                                    </span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless table-sm">
+                            <tr>
+                                <th width="40%">Last Login:</th>
+                                <td>{last_login_formatted}</td>
+                            </tr>
+                            <tr>
+                                <th>Location:</th>
+                                <td>{location}</td>
+                            </tr>
+                            <tr>
+                                <th>Total Orders:</th>
+                                <td>
+                                    <span class="badge bg-primary">{total_orders}</span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Addresses -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-map-marker-alt me-2"></i>
+                    Addresses
+                </h6>
+                <span class="badge bg-secondary">{addresses_count}</span>
+            </div>
+            <div class="card-body">
+                <div id="addressesList">
+                    <!-- Addresses will be inserted here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Order Summary -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-shopping-bag me-2"></i>
+                    Order Summary
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center" id="orderSummaryStats">
+                    <!-- Order stats will be inserted here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Orders -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    Recent Orders
+                </h6>
+                <a href="{orders_url}" class="btn btn-sm btn-outline-primary">
+                    View All Orders
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentOrdersTable">
+                            <!-- Recent orders will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<!-- Address Template -->
+<template id="addressTemplate">
+    <div class="address-item {default_class} mb-3 p-3 border rounded">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h6 class="mb-2">
+                    {full_name}
+                    {default_badge}
+                </h6>
+                <p class="mb-1">{address_line1}</p>
+                {address_line2_html}
+                {landmark_html}
+                <p class="mb-1">{city}, {state} - {pincode}</p>
+                <p class="mb-0">
+                    <i class="fas fa-phone me-1"></i>
+                    {phone}
+                </p>
+                {coordinates_html}
+            </div>
+            {map_link_html}
+        </div>
+        <div class="mt-2 small text-muted">
+            <i class="far fa-clock me-1"></i>
+            Added: {created_at_formatted}
+        </div>
+    </div>
+</template>
+
+<!-- Order Stat Template -->
+<template id="orderStatTemplate">
+    <div class="col">
+        <div class="stat-card p-3 rounded {status_class}">
+            <div class="stat-number">{count}</div>
+            <div class="stat-label">{status}</div>
+            {amount_html}
+        </div>
+    </div>
+</template>
+
+<!-- Recent Order Template -->
+<template id="recentOrderTemplate">
+    <tr>
+        <td>#{order_id}</td>
+        <td>{amount_formatted}</td>
+        <td>
+            <span class="status-badge {status}">
+                {status}
+            </span>
+        </td>
+        <td>{date_formatted}</td>
+        <td>
+            <button class="btn btn-sm btn-outline-primary" 
+                    onclick="loadOrderDetails({order_id})">
+                <i class="fas fa-eye"></i>
+            </button>
+        </td>
+    </tr>
+</template>
